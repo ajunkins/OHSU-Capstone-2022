@@ -44,7 +44,7 @@ import time
 import struct
 import logging
 import numpy as np
-import pigpio
+#import pigpio
 import random
 from mpl import JointEnum as MplId
 from mpl.data_sink import DataSink
@@ -52,7 +52,7 @@ from utilities.user_config import get_user_config_var
 from utilities import get_address
 from mpl.unity import extract_percepts
 from controls import timestep
-
+import serial
 
 class UdpProtocol(asyncio.DatagramProtocol):
     """ Extend the UDP Protocol for unity data communication
@@ -109,9 +109,19 @@ class Servo(DataSink):
         self.packet_update_time = 1.0  # seconds
 
         # servo stuff
-        self.pi = pigpio.pi()
-        self.serial = self.pi.serial_open("/dev/serial0", 115200)
-        self.serial2 = self.pi.serial_open("/dev/ttyAMA1", 115200)
+        #self.pi = pigpio.pi()
+        #self.serial = self.pi.serial_open("/dev/serial0", 115200)
+        #self.serial2 = self.pi.serial_open("/dev/ttyAMA1", 115200)
+        
+        self.serial = serial.Serial(
+            port="/dev/ttyTHS1",
+            baudrate = 115200,
+        )
+        self.serial2 = serial.Serial(
+            port="/dev/ttyTHS2",
+            baudrate = 115200,
+        )
+
 
         self.offsets = [
             [MplId.INDEX_MCP, MplId.INDEX_PIP, MplId.INDEX_DIP],
@@ -255,8 +265,10 @@ class Servo(DataSink):
         msg2 = ",".join(map(fmnt, esp2))
         logging.debug('ESP1 JointCmd: ' + msg1)  # 60 us
         logging.debug('ESP2 JointCmd: ' + msg2)
-        self.pi.serial_write(self.serial, "<%s>\n" % msg1)
-        self.pi.serial_write(self.serial2, "<%s>\n" % msg2)
+        #self.pi.serial_write(self.serial, "<%s>\n" % msg1)
+        #self.pi.serial_write(self.serial2, "<%s>\n" % msg2)
+        self.serial.write(("<%s>\n" % msg1).encode())
+        self.serial2.write(("<%s>\n" % msg2).encode())
         
         # Old code I'm putting back to unbreak mpl
         packer = struct.Struct('27f')
@@ -337,7 +349,9 @@ class Servo(DataSink):
 
     def close(self):
         logging.info("Closing Unity Socket @ {}".format(self.remote_address))
-        self.pi.serial_close(self.serial)
+        #self.pi.serial_close(self.serial)
+        self.serial.close()
+        self.serial2.close()
         self.transport.close()
 
 async def run_loop(sender):
