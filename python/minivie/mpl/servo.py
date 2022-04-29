@@ -117,10 +117,12 @@ class Servo(DataSink):
             port="/dev/ttyTHS1",
             baudrate = 115200,
         )
+        """
         self.serial2 = serial.Serial(
-            port="/dev/ttyTHS2",
+            port="/dev/ttyUSB0",
             baudrate = 115200,
         )
+        """
 
 
         self.offsets = [
@@ -238,38 +240,37 @@ class Servo(DataSink):
             # Convert to encoder clicks
             percent_rotated = (esp_angles[i] - self.limits[i][0]) / (self.limits[i][1] - self.limits[i][0])
             if i != 5:
-                esp_angles[i] =  percent_rotated * self.encoder_maxs[i]
+                #for index finger only
+                esp_angles[i] =  percent_rotated * 400 + 600
             else: # Wrist rotation
                 # We assume that the rotation spans from -max to max instead of 0 to max like the other joints
                 esp_angles[i] = (2*percent_rotated - 1)*self.encoder_maxs[i]
 
         esp1 = esp_angles[:5]
 
-        wrist_rot, wrist_fe, thumb_ab_ad = esp_angles[5:] #TODO: Use me
+        #wrist_rot, wrist_fe, thumb_ab_ad = esp_angles[5:] #TODO: Use me
         # The ESP expects <rot left, rot right, thumb ab ad>, where flexion is achieved through
         #   setting both rotations to positive.
-        esp2 = [0]*3
-        logging.info("Raw esp2 data: " + str(esp_angles[5:]))
-        if(wrist_rot < 0): # Rotate left
-            esp2[0] -= wrist_rot
-        else: # Rotate right
-            esp2[1] += wrist_rot
+        #esp2 = [0]*3
+        #logging.info("Raw esp2 data: " + str(esp_angles[5:]))
+        #if(wrist_rot < 0): # Rotate left
+        #    esp2[0] -= wrist_rot
+        #else: # Rotate right
+        #    esp2[1] += wrist_rot
         
-        esp2[0] = max(wrist_fe, esp2[0])
-        esp2[1] = max(wrist_fe, esp2[1])
-        esp2[2] = thumb_ab_ad
+        #esp2[0] = max(wrist_fe, esp2[0])
+        #esp2[1] = max(wrist_fe, esp2[1])
+        #esp2[2] = thumb_ab_ad
 
         # Send data
         fmnt = lambda angle: str(int(angle))
-        msg1 = ','.join(map(fmnt, esp1))
-        msg2 = ",".join(map(fmnt, esp2))
+        #msg1 = ','.join(map(fmnt, esp1[1]))
+        msg1 = "" + str(int(esp1[1])) + "\n"
+        #msg2 = ",".join(map(fmnt, esp2))
         logging.debug('ESP1 JointCmd: ' + msg1)  # 60 us
-        logging.debug('ESP2 JointCmd: ' + msg2)
-        #self.pi.serial_write(self.serial, "<%s>\n" % msg1)
-        #self.pi.serial_write(self.serial2, "<%s>\n" % msg2)
-        self.serial.write(("<%s>\n" % msg1).encode())
-        self.serial2.write(("<%s>\n" % msg2).encode())
-        
+        #logging.debug('ESP2 JointCmd: ' + msg2)
+        self.serial.write((msg1).encode())
+        #self.serial2.write(("<%s>\n" % msg2).encode())
         # Old code I'm putting back to unbreak mpl
         packer = struct.Struct('27f')
         packed_data = packer.pack(*values)

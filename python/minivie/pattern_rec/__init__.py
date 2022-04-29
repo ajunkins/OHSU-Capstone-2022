@@ -11,6 +11,7 @@ import logging
 import threading
 import numpy as np
 from utilities.user_config import get_user_config_var
+from .mv_classification import MachineVision
 
 
 class FeatureExtract(object):
@@ -257,6 +258,29 @@ class Classifier:
             status_msg = 'ERROR'
             decision_id = None
 
+#    def runMachineVision(self):
+        #running machine vision (imported from print_classification.py)
+        if prediction[0]=='Machine Vision':
+            #run classifier (takes about 8 seconds as of 4/1/22)
+            MV_classifier = MachineVision()
+            result, confidence = MV_classifier.classifyImage()
+
+            #convert to decision id
+            if((result == 'cans') or (result == 'cups') or (result == 'bottles')):
+                result_motion_id = 22 #cylindrical grasp
+            elif(result == 'bowls') or (result == 'plates'):
+                result_motion_id = 15 #open hand
+            else:
+                result_motion_id = 0 #open hand
+
+            #submit
+            try:
+                decision_id = result_motion_id
+                status_msg = 'RunningMachineVision'
+            except error:
+                decision_id = None
+                status_msg = 'ERROR'
+
         return decision_id, status_msg
 
 
@@ -298,6 +322,7 @@ class TrainingData:
             'Hang Loose',
             'Thumbs Up',
             'Peace',
+	    'Machine Vision',
         )
 
         # Create lock to control write access to training data
